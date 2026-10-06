@@ -531,3 +531,13 @@ footer {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* 사용자가 직접 움직임 감소를 선택한 경우 */
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}
