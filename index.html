@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="30초 동안 반응속도와 정확도를 겨루는 웹 미니게임 NEON PULSE">
+  <title>NEON PULSE — Reaction Game</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <main class="game-shell">
+
+    <!-- 상단 -->
+    <header class="top-bar">
+      <a class="logo" href="#" aria-label="NEON PULSE 홈">
+        NEON<span>PULSE</span>
+      </a>
+
+      <div class="settings">
+        <button id="soundToggle" type="button">
+          SOUND ON
+        </button>
+
+        <button id="motionToggle" type="button">
+          MOTION ON
+        </button>
+      </div>
+    </header>
+
+    <!-- 게임 소개 / 난이도 -->
+    <section class="intro" aria-labelledby="game-title">
+      <p class="eyebrow">30 SECOND REACTION TEST</p>
+
+      <h1 id="game-title">
+        TRUST YOUR<br>
+        <span>REFLEX.</span>
+      </h1>
+
+      <p class="intro-text">
+        신호가 켜지는 순간 반응하세요.<br>
+        빠르고 정확할수록 더 높은 점수를 얻습니다.
+      </p>
+
+      <div class="difficulty" aria-label="난이도 선택">
+        <span>DIFFICULTY</span>
+
+        <button class="difficulty-btn" data-level="easy" type="button">
+          EASY
+        </button>
+
+        <button class="difficulty-btn active" data-level="normal" type="button">
+          NORMAL
+        </button>
+
+        <button class="difficulty-btn" data-level="hard" type="button">
+          HARD
+        </button>
+      </div>
+    </section>
+
+    <!-- 게임 -->
+    <section class="game-area" aria-label="NEON PULSE 게임">
+
+      <div class="hud">
+        <div class="hud-item">
+          <span>SCORE</span>
+          <strong id="score">0000</strong>
+        </div>
+
+        <div class="hud-item">
+          <span>TIME</span>
+          <strong id="time">30.0</strong>
+        </div>
+
+        <div class="hud-item">
+          <span>BEST</span>
+          <strong id="bestScore">0000</strong>
+        </div>
+      </div>
+
+      <div class="pulse-zone">
+
+        <p id="gameStatus" class="game-status" aria-live="polite">
+          READY
+        </p>
+
+        <button
+          id="pulseButton"
+          class="pulse-button"
+          type="button"
+          aria-label="반응 신호 버튼"
+        >
+          <span class="pulse-inner">
+            <span id="pulseText">START</span>
+          </span>
+        </button>
+
+        <p id="gameMessage" class="game-message">
+          클릭하거나 SPACE를 눌러 시작하세요.
+        </p>
+
+      </div>
+
+      <div class="stats">
+        <div>
+          <span>AVG REACTION</span>
+          <strong id="averageReaction">---</strong>
+        </div>
+
+        <div>
+          <span>ACCURACY</span>
+          <strong id="accuracy">---%</strong>
+        </div>
+
+        <div>
+          <span>SUCCESS</span>
+          <strong id="successCount">0 / 0</strong>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 최근 기록 -->
+    <section class="history" aria-labelledby="history-title">
+      <div class="section-heading">
+        <p>PERFORMANCE LOG</p>
+        <h2 id="history-title">RUN HISTORY</h2>
+      </div>
+
+      <div id="historyList" class="history-list">
+        <p class="empty-history">
+          아직 기록이 없습니다. 첫 번째 RUN을 시작하세요.
+        </p>
+      </div>
+    </section>
+
+    <!-- 게임 설명 -->
+    <section class="rules" aria-labelledby="rules-title">
+      <div class="section-heading">
+        <p>HOW TO PLAY</p>
+        <h2 id="rules-title">RULES</h2>
+      </div>
+
+      <div class="rule-grid">
+        <article>
+          <span>01</span>
+          <h3>WAIT</h3>
+          <p>신호가 나타날 때까지 기다립니다.</p>
+        </article>
+
+        <article>
+          <span>02</span>
+          <h3>REACT</h3>
+          <p>TAP 신호가 켜지는 순간 클릭하거나 SPACE를 누릅니다.</p>
+        </article>
+
+        <article>
+          <span>03</span>
+          <h3>SCORE</h3>
+          <p>빠르고 정확하게 반응할수록 높은 점수를 얻습니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      <p>NEON PULSE / 30 SECOND REACTION GAME</p>
+      <p>DESIGNED & BUILT BY HA HONGBIN</p>
+    </footer>
+
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
