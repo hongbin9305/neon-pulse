@@ -20,6 +20,7 @@ const historyList = document.getElementById("historyList");
 const difficultyButtons = document.querySelectorAll(".difficulty-btn");
 const soundToggle = document.getElementById("soundToggle");
 const motionToggle = document.getElementById("motionToggle");
+const pauseToggle = document.getElementById("pauseToggle");
 
 // ==========================================
 // SETTINGS
@@ -45,6 +46,11 @@ let phase = "ready";
 
 // 30초 게임 자체가 진행 중인지 별도로 관리
 let gameRunning = false;
+
+let isPaused = false;
+let pauseStartTime = 0;
+let totalPausedTime = 0;
+let pausedPhase = null;
 
 let score = 0;
 let bestScore = 0;
@@ -287,6 +293,12 @@ function startGame() {
   gameRunning = true;
   phase = "waiting";
 
+  isPaused = false;
+  pauseStartTime = 0;
+  totalPausedTime = 0;
+  pausedPhase = null;
+
+  pauseToggle.textContent = "PAUSE";
   score = 0;
   successes = 0;
   attempts = 0;
@@ -310,8 +322,11 @@ function startGame() {
 
 function updateTimer() {
   if (!gameRunning) return;
+  if (isPaused) return;
 
-  const elapsed = performance.now() - gameStartTime;
+  const elapsed =
+    performance.now() - gameStartTime - totalPausedTime;
+  
   const remaining = Math.max(0, GAME_DURATION - elapsed);
 
   timeElement.textContent = (remaining / 1000).toFixed(1);
@@ -377,6 +392,9 @@ function handleGameInput() {
 
   if (!gameRunning) return;
 
+  // 일시정지 중에는 게임 입력 무시
+  if (isPaused) return;
+  
   // 결과 표시 중 입력 무시
   if (phase === "feedback") return;
 
@@ -559,6 +577,53 @@ soundToggle.addEventListener("click", () => {
 
   soundToggle.textContent =
     soundEnabled ? "SOUND ON" : "SOUND OFF";
+});
+
+// ==========================================
+// PAUSE
+// ==========================================
+
+pauseToggle.addEventListener("click", () => {
+  // 게임 시작 전이나 종료 후에는 PAUSE 사용 안 함
+  if (!gameRunning) return;
+
+  // 일시정지
+  if (!isPaused) {
+    isPaused = true;
+    pauseStartTime = performance.now();
+    pausedPhase = phase;
+
+    clearTimeout(signalTimeout);
+    clearTimeout(missTimeout);
+    clearTimeout(feedbackTimeout);
+
+    pauseToggle.textContent = "RESUME";
+
+    gameStatus.textContent = "PAUSED";
+    pulseText.textContent = "PAUSE";
+    gameMessage.textContent =
+      "게임이 일시정지되었습니다. RESUME을 눌러 계속하세요.";
+
+    return;
+  }
+
+  // 재개
+  const pausedDuration = performance.now() - pauseStartTime;
+  totalPausedTime += pausedDuration;
+
+  isPaused = false;
+  pauseStartTime = 0;
+
+  pauseToggle.textContent = "PAUSE";
+
+  // 멈추기 전 상태에 따라 게임을 다시 이어감
+  if (pausedPhase === "signal") {
+    phase = "waiting";
+  }
+
+  pausedPhase = null;
+
+  scheduleNextSignal();
 });
 
 // ==========================================
