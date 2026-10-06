@@ -1,7 +1,6 @@
-// ===============================
-// NEON PULSE
-// 30 SECOND REACTION GAME
-// ===============================
+// ==========================================
+// NEON PULSE — 30 SECOND REACTION GAME
+// ==========================================
 
 const pulseButton = document.getElementById("pulseButton");
 const pulseText = document.getElementById("pulseText");
@@ -22,15 +21,12 @@ const difficultyButtons = document.querySelectorAll(".difficulty-btn");
 const soundToggle = document.getElementById("soundToggle");
 const motionToggle = document.getElementById("motionToggle");
 
-
-// ===============================
-// GAME SETTINGS
-// ===============================
+// ==========================================
+// SETTINGS
+// ==========================================
 
 const GAME_DURATION = 30000;
 
-// 난이도별로 TAP 신호 유지 시간만 달라진다.
-// 나머지 게임 조건은 동일하다.
 const difficulties = {
   easy: 1000,
   normal: 700,
@@ -40,12 +36,15 @@ const difficulties = {
 let difficulty = "normal";
 let signalWindow = difficulties.normal;
 
+// ==========================================
+// STATE
+// ==========================================
 
-// ===============================
-// GAME STATE
-// ===============================
+// ready / waiting / signal / feedback / finished
+let phase = "ready";
 
-let gameState = "ready";
+// 30초 게임 자체가 진행 중인지 별도로 관리
+let gameRunning = false;
 
 let score = 0;
 let bestScore = 0;
@@ -55,11 +54,11 @@ let signalStartTime = 0;
 
 let successes = 0;
 let attempts = 0;
-
 let reactionTimes = [];
 
 let signalTimeout = null;
 let missTimeout = null;
+let feedbackTimeout = null;
 let gameLoop = null;
 
 let inputLocked = false;
@@ -67,10 +66,9 @@ let inputLocked = false;
 let soundEnabled = true;
 let motionEnabled = true;
 
-
-// ===============================
-// LOCAL STORAGE
-// ===============================
+// ==========================================
+// STORAGE
+// ==========================================
 
 function loadSavedData() {
   try {
@@ -92,14 +90,13 @@ function saveBestScore() {
   try {
     localStorage.setItem("neonPulseBest", String(bestScore));
   } catch (error) {
-    // 저장할 수 없어도 게임은 계속 실행된다.
+    // 저장 실패 시에도 게임은 계속 실행
   }
 }
 
-
-// ===============================
+// ==========================================
 // DISPLAY
-// ===============================
+// ==========================================
 
 function formatScore(value) {
   return String(Math.max(0, value)).padStart(4, "0");
@@ -133,10 +130,17 @@ function updateStats() {
   successCountElement.textContent = `${successes} / ${attempts}`;
 }
 
-
-// ===============================
+// ==========================================
 // HISTORY
-// ===============================
+// ==========================================
+
+function clearHistory() {
+  historyList.innerHTML = `
+    <p class="empty-history">
+      아직 기록이 없습니다. 첫 번째 RUN을 시작하세요.
+    </p>
+  `;
+}
 
 function addHistory(text, successful) {
   const emptyHistory = historyList.querySelector(".empty-history");
@@ -155,21 +159,17 @@ function addHistory(text, successful) {
 
   historyList.prepend(item);
 
-  // 최근 기록은 최대 20개만 유지한다.
   while (historyList.children.length > 20) {
     historyList.removeChild(historyList.lastElementChild);
   }
 }
 
-
-// ===============================
+// ==========================================
 // SOUND
-// ===============================
+// ==========================================
 
 function playTone(frequency, duration = 0.08) {
-  if (!soundEnabled) {
-    return;
-  }
+  if (!soundEnabled) return;
 
   try {
     const AudioContext =
@@ -198,14 +198,13 @@ function playTone(frequency, duration = 0.08) {
       context.close();
     });
   } catch (error) {
-    // 소리를 재생하지 못해도 게임에는 영향을 주지 않는다.
+    // 소리 오류가 게임을 중단시키지 않음
   }
 }
 
-
-// ===============================
-// VISUAL STATE
-// ===============================
+// ==========================================
+// VISUAL STATES
+// ==========================================
 
 function clearPulseClasses() {
   pulseButton.classList.remove(
@@ -218,43 +217,33 @@ function clearPulseClasses() {
 
 function showWaiting() {
   clearPulseClasses();
-
   pulseButton.classList.add("waiting");
 
   gameStatus.textContent = "WAIT";
   pulseText.textContent = "WAIT";
-
-  gameMessage.textContent =
-    "신호가 켜질 때까지 기다리세요.";
+  gameMessage.textContent = "신호가 켜질 때까지 기다리세요.";
 }
 
 function showSignal() {
   clearPulseClasses();
-
   pulseButton.classList.add("active-signal");
 
   gameStatus.textContent = "SIGNAL";
   pulseText.textContent = "TAP!";
-
-  gameMessage.textContent =
-    "NOW — 지금 반응하세요!";
+  gameMessage.textContent = "NOW — 지금 반응하세요!";
 }
 
-function showSuccess(reactionTime, rating) {
+function showSuccess(reactionTime, rating, points) {
   clearPulseClasses();
-
   pulseButton.classList.add("success");
 
   gameStatus.textContent = rating;
   pulseText.textContent = `${reactionTime}ms`;
-
-  gameMessage.textContent =
-    `${rating} · +${calculatePoints(reactionTime)} POINTS`;
+  gameMessage.textContent = `${rating} · +${points} POINTS`;
 }
 
 function showFailure(type) {
   clearPulseClasses();
-
   pulseButton.classList.add("fail");
 
   gameStatus.textContent = "FAILED";
@@ -269,53 +258,38 @@ function showFailure(type) {
   }
 }
 
-
-// ===============================
-// SCORING
-// ===============================
+// ==========================================
+// SCORE
+// ==========================================
 
 function calculatePoints(reactionTime) {
-  if (reactionTime < 200) {
-    return 200;
-  }
-
-  if (reactionTime < 300) {
-    return 150;
-  }
-
-  if (reactionTime < 400) {
-    return 120;
-  }
+  if (reactionTime < 200) return 200;
+  if (reactionTime < 300) return 150;
+  if (reactionTime < 400) return 120;
 
   return 100;
 }
 
 function getRating(reactionTime) {
-  if (reactionTime < 200) {
-    return "PERFECT";
-  }
-
-  if (reactionTime < 300) {
-    return "GREAT";
-  }
+  if (reactionTime < 200) return "PERFECT";
+  if (reactionTime < 300) return "GREAT";
 
   return "GOOD";
 }
 
-
-// ===============================
-// GAME FLOW
-// ===============================
+// ==========================================
+// GAME
+// ==========================================
 
 function startGame() {
   clearTimers();
 
-  gameState = "playing";
+  gameRunning = true;
+  phase = "waiting";
 
   score = 0;
   successes = 0;
   attempts = 0;
-
   reactionTimes = [];
 
   inputLocked = false;
@@ -327,66 +301,51 @@ function startGame() {
 
   timeElement.textContent = "30.0";
 
-  gameStatus.textContent = "STARTED";
-  pulseText.textContent = "WAIT";
-
-  gameMessage.textContent =
-    "집중하세요. 첫 번째 신호를 기다립니다.";
-
-  showWaiting();
+  clearHistory();
 
   scheduleNextSignal();
 
   gameLoop = setInterval(updateTimer, 50);
 }
 
-
 function updateTimer() {
-  if (gameState !== "playing") {
-    return;
-  }
+  if (!gameRunning) return;
 
   const elapsed = performance.now() - gameStartTime;
   const remaining = Math.max(0, GAME_DURATION - elapsed);
 
-  timeElement.textContent =
-    (remaining / 1000).toFixed(1);
+  timeElement.textContent = (remaining / 1000).toFixed(1);
 
   if (remaining <= 0) {
     finishGame();
   }
 }
 
-
 function scheduleNextSignal() {
-  if (gameState !== "playing") {
-    return;
-  }
+  if (!gameRunning) return;
 
-  gameState = "waiting";
+  clearTimeout(signalTimeout);
+  clearTimeout(missTimeout);
+  clearTimeout(feedbackTimeout);
+
+  phase = "waiting";
   inputLocked = false;
 
   showWaiting();
 
-  // 다음 신호까지 1.2 ~ 2.2초 랜덤 대기
-  const delay =
-    1200 + Math.random() * 1000;
+  const delay = 1200 + Math.random() * 1000;
 
   signalTimeout = setTimeout(() => {
-    activateSignal();
+    if (gameRunning) {
+      activateSignal();
+    }
   }, delay);
 }
 
-
 function activateSignal() {
-  if (
-    gameState !== "waiting" &&
-    gameState !== "playing"
-  ) {
-    return;
-  }
+  if (!gameRunning || phase !== "waiting") return;
 
-  gameState = "signal";
+  phase = "signal";
   inputLocked = false;
 
   signalStartTime = performance.now();
@@ -399,35 +358,37 @@ function activateSignal() {
   }, signalWindow);
 }
 
-
-// ===============================
+// ==========================================
 // INPUT
-// ===============================
+// ==========================================
 
 function handleGameInput() {
-
-  // READY 상태에서는 게임 시작
-  if (gameState === "ready") {
+  // 처음 시작
+  if (phase === "ready") {
     startGame();
     return;
   }
 
-  // 게임 종료 후 다시 시작
-  if (gameState === "finished") {
+  // 30초 종료 후 재시작
+  if (phase === "finished") {
     startGame();
     return;
   }
 
-  // 같은 순간 여러 입력이 들어와도
-  // 한 번만 처리한다.
-  if (inputLocked) {
-    return;
-  }
+  if (!gameRunning) return;
 
+  // 결과 표시 중 입력 무시
+  if (phase === "feedback") return;
 
-  // 신호 전에 누른 경우
-  if (gameState === "waiting") {
+  // 같은 신호에 중복 입력 방지
+  if (inputLocked) return;
+
+  // 신호 전에 누름
+  if (phase === "waiting") {
     inputLocked = true;
+    phase = "feedback";
+
+    clearTimeout(signalTimeout);
 
     attempts += 1;
     score = Math.max(0, score - 50);
@@ -443,21 +404,17 @@ function handleGameInput() {
     showFailure("EARLY");
     playTone(180);
 
-    clearTimeout(signalTimeout);
-
-    setTimeout(() => {
-      if (gameState !== "finished") {
-        scheduleNextSignal();
-      }
-    }, 700);
+    feedbackTimeout = setTimeout(() => {
+      scheduleNextSignal();
+    }, 650);
 
     return;
   }
 
-
-  // 정상 반응
-  if (gameState === "signal") {
+  // 정상 TAP
+  if (phase === "signal") {
     inputLocked = true;
+    phase = "feedback";
 
     clearTimeout(missTimeout);
 
@@ -466,14 +423,10 @@ function handleGameInput() {
 
     attempts += 1;
     successes += 1;
-
     reactionTimes.push(reactionTime);
 
-    const points =
-      calculatePoints(reactionTime);
-
-    const rating =
-      getRating(reactionTime);
+    const points = calculatePoints(reactionTime);
+    const rating = getRating(reactionTime);
 
     score += points;
 
@@ -485,35 +438,30 @@ function handleGameInput() {
       true
     );
 
-    showSuccess(
-      reactionTime,
-      rating
-    );
-
+    showSuccess(reactionTime, rating, points);
     playTone(1250);
 
-    setTimeout(() => {
-      if (gameState !== "finished") {
-        scheduleNextSignal();
-      }
+    feedbackTimeout = setTimeout(() => {
+      scheduleNextSignal();
     }, 650);
   }
 }
 
-
-// ===============================
+// ==========================================
 // MISS
-// ===============================
+// ==========================================
 
 function registerMiss() {
   if (
-    gameState !== "signal" ||
+    !gameRunning ||
+    phase !== "signal" ||
     inputLocked
   ) {
     return;
   }
 
   inputLocked = true;
+  phase = "feedback";
 
   attempts += 1;
 
@@ -525,27 +473,22 @@ function registerMiss() {
   );
 
   showFailure("MISS");
-
   playTone(140);
 
-  setTimeout(() => {
-    if (gameState !== "finished") {
-      scheduleNextSignal();
-    }
+  feedbackTimeout = setTimeout(() => {
+    scheduleNextSignal();
   }, 650);
 }
 
-
-// ===============================
+// ==========================================
 // FINISH
-// ===============================
+// ==========================================
 
 function finishGame() {
-  if (gameState === "finished") {
-    return;
-  }
+  if (!gameRunning) return;
 
-  gameState = "finished";
+  gameRunning = false;
+  phase = "finished";
 
   clearTimers();
 
@@ -553,7 +496,6 @@ function finishGame() {
 
   if (score > bestScore) {
     bestScore = score;
-
     saveBestScore();
     updateBestScore();
   }
@@ -569,37 +511,30 @@ function finishGame() {
   playTone(660, 0.15);
 }
 
-
-// ===============================
-// CLEAR TIMERS
-// ===============================
+// ==========================================
+// TIMER CLEANUP
+// ==========================================
 
 function clearTimers() {
   clearTimeout(signalTimeout);
   clearTimeout(missTimeout);
+  clearTimeout(feedbackTimeout);
   clearInterval(gameLoop);
 
   signalTimeout = null;
   missTimeout = null;
+  feedbackTimeout = null;
   gameLoop = null;
 }
 
-
-// ===============================
+// ==========================================
 // DIFFICULTY
-// ===============================
+// ==========================================
 
 difficultyButtons.forEach((button) => {
-
   button.addEventListener("click", () => {
-
-    // 게임 도중에는 난이도를 바꾸지 않는다.
-    if (
-      gameState !== "ready" &&
-      gameState !== "finished"
-    ) {
-      return;
-    }
+    // 플레이 중 난이도 변경 금지
+    if (gameRunning) return;
 
     difficultyButtons.forEach((item) => {
       item.classList.remove("active");
@@ -613,114 +548,82 @@ difficultyButtons.forEach((button) => {
     gameMessage.textContent =
       `${difficulty.toUpperCase()} MODE · TAP 가능 시간 ${signalWindow}ms`;
   });
-
 });
 
-
-// ===============================
-// SOUND OPTION
-// ===============================
+// ==========================================
+// SOUND
+// ==========================================
 
 soundToggle.addEventListener("click", () => {
-
   soundEnabled = !soundEnabled;
 
   soundToggle.textContent =
-    soundEnabled
-      ? "SOUND ON"
-      : "SOUND OFF";
-
+    soundEnabled ? "SOUND ON" : "SOUND OFF";
 });
 
-
-// ===============================
-// MOTION OPTION
-// ===============================
+// ==========================================
+// MOTION
+// ==========================================
 
 motionToggle.addEventListener("click", () => {
-
   motionEnabled = !motionEnabled;
 
   motionToggle.textContent =
-    motionEnabled
-      ? "MOTION ON"
-      : "MOTION OFF";
+    motionEnabled ? "MOTION ON" : "MOTION OFF";
 
   document.body.classList.toggle(
     "reduce-motion",
     !motionEnabled
   );
-
 });
 
-
-// ===============================
+// ==========================================
 // MOUSE
-// ===============================
+// ==========================================
 
-pulseButton.addEventListener(
-  "click",
-  handleGameInput
-);
+pulseButton.addEventListener("click", handleGameInput);
 
-
-// ===============================
+// ==========================================
 // KEYBOARD
-// ===============================
+// ==========================================
 
 document.addEventListener("keydown", (event) => {
+  if (event.code !== "Space") return;
 
-  if (event.code !== "Space") {
-    return;
-  }
+  if (event.repeat) return;
 
-  // Space를 길게 누르고 있을 때
-  // 반복 입력되는 것을 막는다.
-  if (event.repeat) {
-    return;
-  }
-
-  // 버튼 자체에 포커스가 있을 때는
-  // 브라우저 기본 click과 중복되지 않도록 한다.
+  // START 원에 포커스가 있을 때는
+  // 브라우저가 Space → click을 자체 처리하므로 중복 방지
   if (document.activeElement === pulseButton) {
     return;
   }
 
   event.preventDefault();
-
   handleGameInput();
 });
 
-
-// ===============================
-// REDUCED MOTION
-// ===============================
+// ==========================================
+// SYSTEM REDUCED MOTION
+// ==========================================
 
 const reducedMotionPreference =
-  window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  );
+  window.matchMedia("(prefers-reduced-motion: reduce)");
 
 if (reducedMotionPreference.matches) {
   motionEnabled = false;
-
-  motionToggle.textContent =
-    "MOTION OFF";
-
-  document.body.classList.add(
-    "reduce-motion"
-  );
+  motionToggle.textContent = "MOTION OFF";
+  document.body.classList.add("reduce-motion");
 }
 
-
-// ===============================
+// ==========================================
 // INITIALIZE
-// ===============================
+// ==========================================
 
 loadSavedData();
-
 updateScore();
 updateStats();
+
+phase = "ready";
 
 gameStatus.textContent = "READY";
 pulseText.textContent = "START";
