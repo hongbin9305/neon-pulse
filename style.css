@@ -308,12 +308,13 @@ a:focus-visible {
 
 .pause-button {
   margin-top: 18px;
-  padding: 10px 22px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  min-width: 110px;
+  padding: 11px 24px;
+  border: 1px solid var(--blue);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--muted);
-  font-size: 10px;
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--blue);
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.14em;
   cursor: pointer;
@@ -321,13 +322,15 @@ a:focus-visible {
     color 0.2s ease,
     border-color 0.2s ease,
     background 0.2s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .pause-button:hover {
-  color: var(--text);
+  color: #07090d;
+  background: var(--blue);
   border-color: var(--blue);
-  background: var(--blue-soft);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.22);
   transform: translateY(-1px);
 }
 
