@@ -30,7 +30,7 @@ const GAME_DURATION = 30000;
 
 const difficulties = {
   easy: 1000,
-  normal: 700,
+  normal: 550,
   hard: 450
 };
 
